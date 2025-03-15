@@ -9,8 +9,29 @@ class SignInPage extends StatefulWidget {
 
 class _SignInPageState extends State<SignInPage> {
   bool _rememberMe = false;
+  bool _isButtonEnabled = false;
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+
+  void _validateForm() {
+    setState(() {
+      _isButtonEnabled = _emailController.text.isNotEmpty && _passwordController.text.isNotEmpty;
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController.addListener(_validateForm);
+    _passwordController.addListener(_validateForm);
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +45,6 @@ class _SignInPageState extends State<SignInPage> {
               fit: BoxFit.cover,
             ),
           ),
-
 
           Positioned(
             top: MediaQuery.of(context).size.height * 0.3, // Adjust the height as needed
@@ -42,17 +62,18 @@ class _SignInPageState extends State<SignInPage> {
               padding: EdgeInsets.symmetric(horizontal: 20),
               child: SingleChildScrollView(
                 child: Column(
-                  mainAxisSize: MainAxisSize.min, // Important to prevent overflow
+                  mainAxisSize: MainAxisSize.min, // Prevents overflow
                   children: [
                     SizedBox(height: 40), // Space from top
                     Text(
-                      "Welcome back",
+                      "Welcome",
                       style: TextStyle(fontSize: 34, fontWeight: FontWeight.bold),
                     ),
                     SizedBox(height: 40),
 
-                    // Email Field
+                    // ID Field
                     TextField(
+                      controller: _emailController,
                       decoration: InputDecoration(
                         labelText: "ID Number",
                         prefixIcon: Icon(Icons.perm_identity),
@@ -63,6 +84,7 @@ class _SignInPageState extends State<SignInPage> {
 
                     // Password Field
                     TextField(
+                      controller: _passwordController,
                       obscureText: true,
                       decoration: InputDecoration(
                         labelText: "Password",
@@ -110,11 +132,13 @@ class _SignInPageState extends State<SignInPage> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: () {
+                        onPressed: _isButtonEnabled
+                            ? () {
                           Navigator.push(context, MaterialPageRoute(builder: (context) => MainNavigation()));
-                        },
+                        }
+                            : null, // Button is disabled when fields are empty
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
+                          backgroundColor: _isButtonEnabled ? Colors.blue : Colors.grey,
                           padding: EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
@@ -136,20 +160,7 @@ class _SignInPageState extends State<SignInPage> {
             ),
           ),
         ],
-      )
-      ,
+      ),
     );
   }
-
-  // Social Icon Widget
-  // Widget _buildSocialIcon(String assetName) {
-  //   return Padding(
-  //     padding: EdgeInsets.symmetric(horizontal: 10),
-  //     child: Image.asset(
-  //       assetName,
-  //       height: 40,
-  //       width: 40,
-  //     ),
-  //   );
-  // }
 }
