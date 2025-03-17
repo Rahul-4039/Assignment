@@ -8,6 +8,12 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+dependencies {
+    implementation(platform("com.google.firebase:firebase-bom:32.1.1")) // Latest BOM
+    implementation("com.google.firebase:firebase-auth-ktx")
+    implementation("com.google.firebase:firebase-firestore-ktx")
+}
+
 android {
     namespace = "com.example.assignment"
     compileSdk = flutter.compileSdkVersion
@@ -27,7 +33,7 @@ android {
         applicationId = "com.example.assignment"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        minSdk = 23
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
