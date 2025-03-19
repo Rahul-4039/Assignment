@@ -1,10 +1,9 @@
-import 'package:assignment/pages/addmember.dart';
 import 'package:assignment/pages/changepassword.dart';
-import 'package:assignment/studentnav.dart';
-import 'package:assignment/teachernav.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
+import 'package:assignment/pages/editprofile.dart';
+import 'package:assignment/studentnav.dart';
 
 class SignInPage extends StatefulWidget {
   @override
@@ -13,72 +12,87 @@ class SignInPage extends StatefulWidget {
 
 class _SignInPageState extends State<SignInPage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final DatabaseReference _dbRef = FirebaseDatabase.instance.ref();
 
   bool _rememberMe = false;
   bool _isButtonEnabled = false;
   final TextEditingController _idController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  bool _isLoading = false;
 
-  void _validateForm() {
+  @override
+  void initState() {
+    super.initState();
+    _idController.addListener(_validateInput);
+    _passwordController.addListener(_validateInput);
+  }
+
+  void _validateInput() {
     setState(() {
       _isButtonEnabled = _idController.text.isNotEmpty && _passwordController.text.isNotEmpty;
     });
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _idController.addListener(_validateForm);
-    _passwordController.addListener(_validateForm);
-  }
-
-  @override
-  void dispose() {
-    _idController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
-
   Future<void> _signIn() async {
-    if (!_isButtonEnabled) return;
+    setState(() => _isLoading = true);
 
     try {
-      String enteredId = _idController.text.trim();
-      String enteredPassword = _passwordController.text.trim();
+      String idNumber = _idController.text.trim();
+      String password = _passwordController.text.trim();
+      String fakeEmail = "$idNumber@college.edu"; // Ensuring email format for Firebase
 
-      // Check Firestore if user exists
-      QuerySnapshot userQuery = await _firestore
-          .collection('users')
-          .where('id', isEqualTo: enteredId)
-          .limit(1)
-          .get();
-
-      if (userQuery.docs.isEmpty) {
-        // If user is not found, navigate to Add Member Page
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => AddMemberPage()));
-        return;
-      }
-
-      var userData = userQuery.docs.first;
-      String email = userData['email']; // Firebase requires email for authentication
-      String role = userData['role'];
-
-      // Authenticate user
       UserCredential userCredential = await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: enteredPassword,
+        email: fakeEmail,
+        password: password,
       );
 
-      if (role == 'student') {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => MainNavigation()));
-      } else if (role == 'teacher') {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => MainNavigation()));
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Invalid user role")));
+      User? user = userCredential.user;
+      if (user != null) {
+        DatabaseEvent event = await _dbRef.child("users").child(user.uid).once();
+        DataSnapshot snapshot = event.snapshot;
+
+        if (snapshot.exists && snapshot.value != null) {
+          Map<String, dynamic> userData = Map<String, dynamic>.from(snapshot.value as Map);
+          String role = userData['role'] ?? 'student';
+
+          // Check if user has completed profile
+          bool isProfileIncomplete = userData['name'] == "" || userData['phone'] == "" || userData['username'] == "";
+
+          if (isProfileIncomplete) {
+            // Navigate to Edit Profile Page
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => EditProfilePage(
+                  name: userData['name'] ?? "",
+                  username: userData['username'] ?? "",
+                  gender: userData['gender'] ?? "Male",
+                  phone: userData['phone'] ?? "",
+                  email: user.email ?? "",
+                ),
+              ),
+            );
+          } else {
+            // Navigate to Main Navigation
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => MainNavigation()),
+            );
+          }
+        }
       }
+    } on FirebaseAuthException catch (e) {
+      String errorMessage = "Failed to sign in. Please try again.";
+      if (e.code == 'user-not-found') {
+        errorMessage = "User not found. Please check your ID.";
+      } else if (e.code == 'wrong-password') {
+        errorMessage = "Incorrect password. Please try again.";
+      }
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(errorMessage)));
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Login failed: ${e.toString()}")));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: ${e.toString()}")));
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 
@@ -148,7 +162,10 @@ class _SignInPageState extends State<SignInPage> {
                         ),
                         GestureDetector(
                           onTap: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (context) => ChangePasswordPage()));
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => ChangePasswordPage()),
+                            );
                           },
                           child: Text("Forgot password?", style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
                         ),
@@ -158,13 +175,15 @@ class _SignInPageState extends State<SignInPage> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: _signIn,
+                        onPressed: _isButtonEnabled ? _signIn : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _isButtonEnabled ? Colors.blue : Colors.grey,
                           padding: EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
-                        child: Text("Sign in", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                        child: _isLoading
+                            ? CircularProgressIndicator(color: Colors.white)
+                            : Text("Sign in", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
                       ),
                     ),
                   ],
