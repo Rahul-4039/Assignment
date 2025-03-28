@@ -3,6 +3,8 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:assignment/studentnav.dart';
 
+import '../teachernav.dart';
+
 class EditProfilePage extends StatefulWidget {
   final String name;
   final String username;
@@ -72,24 +74,39 @@ class _EditProfilePageState extends State<EditProfilePage> {
         // Retrieve the user's role
         DatabaseEvent event = await _dbRef.child("users").child(userId).once();
         DataSnapshot snapshot = event.snapshot;
-        String role = "student";
+        String role = "student"; // Default role
 
         if (snapshot.exists && snapshot.value != null) {
           Map<String, dynamic> userData = Map<String, dynamic>.from(snapshot.value as Map);
           role = userData['role'] ?? 'student';
         }
 
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Profile updated successfully!")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Profile updated successfully!")),
+        );
 
         // Navigate based on role
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => MainNavigation()));
+        if (role == "teacher") {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => TeacherNav()), // Change this to the teacher's dashboard
+          );
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => MainNavigation()), // Student's dashboard
+          );
+        }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to update profile: ${e.toString()}")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to update profile: ${e.toString()}")),
+      );
     } finally {
       setState(() => _isLoading = false);
     }
   }
+
 
   @override
   Widget build(BuildContext context) {

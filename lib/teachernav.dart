@@ -1,20 +1,30 @@
+import 'package:assignment/teacherpages/t_uploadassignment.dart';
+import 'package:assignment/teacherpages/t_year.dart';
 import 'package:flutter/material.dart';
+import 'package:assignment/pages/profilepage.dart';
 
-class BottomNavBar extends StatefulWidget {
-  const BottomNavBar({super.key});
 
+class TeacherNav extends StatefulWidget {
   @override
-  _BottomNavBarState createState() => _BottomNavBarState();
+  _TeacherNavState createState() => _TeacherNavState();
 }
 
-class _BottomNavBarState extends State<BottomNavBar> {
+class _TeacherNavState extends State<TeacherNav> {
   int _selectedIndex = 0;
 
-  static const List<Widget> _widgetOptions = <Widget>[
-    Text('Home Page', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),),
-    Text('Assignments', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),),
-    Text('Profile', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),),
+  final List<Widget> _pages = [
+    TyearPage(),
+    TuploadAssignmentPage(),
+    ProfilePage(),
   ];
+
+  // List of titles for AppBar
+  final List<String> _titles = [
+    "Years",             // Title for YearPage
+    "Upload Assignment", // Title for UploadAssignmentPage
+    "Profile",           // Title for ProfilePage
+  ];
+
 
   void _onItemTapped(int index) {
     setState(() {
@@ -24,31 +34,21 @@ class _BottomNavBarState extends State<BottomNavBar> {
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       appBar: AppBar(
-        title: Text('Assignment App'),
-        titleTextStyle: TextStyle(
-          color: Colors.white,
-          fontSize: 25,
-          fontWeight: FontWeight.bold,
-        ),
-        backgroundColor: Colors.blue[700],
+        title: Text(_titles[_selectedIndex], style: TextStyle(color: Colors.white),), // Dynamically change title
+        backgroundColor: Colors.blueAccent,
       ),
-
-
-      body: Center(child: _widgetOptions.elementAt(_selectedIndex)),
+      body: _pages[_selectedIndex], // Show the selected page
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(icon: Icon(Icons.assignment), label: 'Assignments'),
-          BottomNavigationBarItem(icon: Icon(Icons.upload_file), label: 'Upload Assignment'),
+          BottomNavigationBarItem(icon: Icon(Icons.upload_file), label: 'Uploaded Assignment'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
         currentIndex: _selectedIndex,
         selectedItemColor: Colors.blueAccent,
-        unselectedItemColor: Colors.blueGrey,
-        backgroundColor: Colors.white,
-        elevation: 10,
+        unselectedItemColor: Colors.grey,
         onTap: _onItemTapped,
       ),
     );

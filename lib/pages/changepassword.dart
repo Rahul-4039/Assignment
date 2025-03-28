@@ -1,3 +1,5 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 
 class ChangePasswordPage extends StatefulWidget {
@@ -10,6 +12,10 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   bool _isObscurePassword = true;
   bool _isObscureConfirmPassword = true;
   bool _isButtonEnabled = false;
+  bool _isLoading = false;
+
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final DatabaseReference _dbRef = FirebaseDatabase.instance.ref();
 
   final TextEditingController _oldPasswordController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -38,6 +44,50 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _changePassword() async {
+    setState(() => _isLoading = true);
+
+    try {
+      User? user = _auth.currentUser;
+      if (user == null) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("User not found.")));
+        return;
+      }
+
+      // Re-authenticate the user
+      AuthCredential credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: _oldPasswordController.text.trim(),
+      );
+
+      await user.reauthenticateWithCredential(credential);
+
+      // Update the password in Firebase Authentication
+      await user.updatePassword(_passwordController.text.trim());
+
+      // Update password in Realtime Database
+      await _dbRef.child("users").child(user.uid).update({
+        "password": _passwordController.text.trim(),
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Password updated successfully!")));
+
+      Navigator.pop(context); // Go back after success
+    } on FirebaseAuthException catch (e) {
+      String errorMessage = "Error changing password.";
+      if (e.code == 'wrong-password') {
+        errorMessage = "Incorrect old password.";
+      } else if (e.code == 'weak-password') {
+        errorMessage = "New password is too weak.";
+      }
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(errorMessage)));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: ${e.toString()}")));
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -159,19 +209,15 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: _isButtonEnabled
-                          ? () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text("Password changed successfully")),
-                        );
-                      }
-                          : null, // Disabled if form is not valid
+                      onPressed: _isButtonEnabled ? _changePassword : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _isButtonEnabled ? Colors.blue : Colors.grey,
                         padding: EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
-                      child: Text(
+                      child: _isLoading
+                          ? CircularProgressIndicator(color: Colors.white)
+                          : Text(
                         "Continue",
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
                       ),

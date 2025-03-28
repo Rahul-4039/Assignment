@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:assignment/pages/editprofile.dart';
 import 'package:assignment/studentnav.dart';
 
+import '../teachernav.dart';
+
 class SignInPage extends StatefulWidget {
   @override
   _SignInPageState createState() => _SignInPageState();
@@ -73,11 +75,18 @@ class _SignInPageState extends State<SignInPage> {
               ),
             );
           } else {
-            // Navigate to Main Navigation
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => MainNavigation()),
-            );
+            // Navigate based on role
+            if (role == "teacher") {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => TeacherNav()), // Navigate to Teacher Dashboard
+              );
+            } else {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => MainNavigation()), // Navigate to Student Dashboard
+              );
+            }
           }
         }
       }
